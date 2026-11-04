@@ -1,1 +1,426 @@
-<!DOCTYPE html><br/><html lang="zh-CN"><br/><head><br/>  <meta charset="UTF-8" /><br/>  <meta name="viewport" content="width=device-width, initial-scale=1.0"/><br/>  <title>反诈模拟聊天｜电商理赔诈骗交互演示</title><br/>  <script src="https://cdn.tailwindcss.com"></script><br/>  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet"><br/>  <script><br/>    tailwind.config = {<br/>      theme: {<br/>        extend: {<br/>          colors: {<br/>            wechat: {<br/>              green: '#95ec69',<br/>              bg: '#ededed',<br/>              bar: '#f7f7f7'<br/>            }<br/>          }<br/>        }<br/>      }<br/>    }<br/>  </script><br/>  <style><br/>    .chat-bubble-left {<br/>      background: #fff;<br/>      border-radius: 8px;<br/>      border-top-left-radius: 0;<br/>      padding: 8px 12px;<br/>      max-width: 70%;<br/>      box-shadow: 0 1px 2px #00000015;<br/>    }<br/>    .chat-bubble-right {<br/>      background: #95ec69;<br/>      border-radius: 8px;<br/>      border-top-right-radius: 0;<br/>      padding: 8px 12px;<br/>      max-width: 70%;<br/>    }<br/>    .scroll-hide::-webkit-scrollbar { display: none; }<br/>    .option-btn {<br/>      display:block;<br/>      width:100%;<br/>      text-align:left;<br/>      border:1px solid #d1d5db;<br/>      border-radius:8px;<br/>      padding:8px 12px;<br/>      margin:4px 0;<br/>      transition: 0.2s;<br/>    }<br/>    .option-btn:hover { background:#f3f4f6; }<br/>    .option-btn:disabled { opacity:0.5; cursor:not-allowed; }<br/>    .reset-btn{<br/>      width:100%;<br/>      background:#ef4444;<br/>      color:#fff;<br/>      border-radius:8px;<br/>      padding:8px 0;<br/>      margin-top:8px;<br/>    }<br/>    .mask {<br/>      position:fixed;<br/>      inset:0;<br/>      background:rgba(0,0,0,0.5);<br/>      display:flex;<br/>      align-items:center;<br/>      justify-content:center;<br/>      z-index:9999;<br/>      padding:16px;<br/>    }<br/>    .warn-card, .sms-card {<br/>      background:#fff;<br/>      border-radius:12px;<br/>      padding:20px;<br/>      max-width:340px;<br/>    }<br/>    .sms-card{<br/>      border-left:6px solid #ef4444;<br/>    }<br/>    .notify-bar{<br/>      position:fixed;<br/>      top:12px;<br/>      left:50%;<br/>      transform: translateX(-50%);<br/>      width: 320px;<br/>      background:#fff;<br/>      border-radius:10px;<br/>      padding:10px 14px;<br/>      box-shadow: 0 2px 12px #00000025;<br/>      z-index:9998;<br/>      cursor:pointer;<br/>    }<br/>    .hidden { display:none !important; }<br/>    .typing-cursor{<br/>      display:inline-block;<br/>      width:6px;<br/>      height:16px;<br/>      background:#444;<br/>      animation: blink 0.7s infinite;<br/>    }<br/>    @keyframes blink{<br/>      0%,50%{opacity:1;}<br/>      51%,100%{opacity:0;}<br/>    }<br/>  </style><br/></head><br/><body class="bg-gray-200 min-h-screen p-2"><br/>  <div class="max-w-md mx-auto"><br/>    <!-- 主聊天区域 --><br/>    <div class="w-full bg-[#f4f4f4] rounded-xl overflow-hidden shadow-lg border border-gray-300 relative"><br/>      <div class="bg-[#f7f7f7] flex items-center px-3 py-3 border-b border-gray-200"><br/>        <i class="fa fa-angle-left text-xl text-gray-600 mr-3"></i><br/>        < img src="https://api.dicebear.com/7.x/avataaars/svg?seed=scammer" class="w-8 h-8 rounded-full mr-2"><br/>        <span class="font-medium text-gray-800">客服-李经理</span><br/>        <span class="ml-auto text-xs text-red-500 font-bold">【反诈模拟演示】</span><br/>      </div><br/>      <div id="chatBox" class="h-[460px] overflow-y-auto scroll-hide p-3 space-y-4 bg-[#ededed]"></div><br/>      <div id="optionArea" class="bg-white px-3 py-3 border-t border-gray-200 max-h-[180px] overflow-y-auto"></div><br/>      <!-- 验证码输入面板（默认隐藏） --><br/>      <div id="codeInputWrap" class="hidden bg-white p-4 border-t"><br/>        <div class="text-sm text-gray-600 mb-2">请输入收到的短信验证码：</div><br/>        <div class="flex gap-2"><br/>          <input id="codeInput" type="text" maxlength="6" class="border px-3 py-2 rounded-lg flex-1" placeholder="6位数字"><br/>          <button id="submitCodeBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">提交</button><br/>        </div><br/>        <div id="codeTip" class="text-xs mt-2 text-red-500 hidden">验证码错误，请仔细核对短信内容！</div><br/>      </div><br/>    </div><br/>  </div><br/><br/>  <!-- 顶部消息推送通知 --><br/>  <div id="notifyBar" class="notify-bar hidden"><br/>    <div class="text-xs text-gray-400">【银行通知】</div><br/>    <div class="text-sm">您收到一条核验短信，点击查看</div><br/>  </div><br/><br/>  <!-- 验证码短信弹窗 --><br/>  <div id="smsCodeModal" class="mask hidden"><br/>    <div class="sms-card"><br/>      <div class="text-xs text-gray-400 mb-1">【XX银行】</div><br/>      <div class="text-base font-medium">验证码：<span class="text-red-600 font-bold text-xl" id="realCode">729406</span></div><br/>      <div class="text-xs text-gray-500 mt-2">10分钟内有效，请勿向他人泄露！</div><br/>      <button id="closeSmsCodeBtn" class="w-full mt-5 bg-gray-500 text-white py-2 rounded-lg">我知道了</button><br/>    </div><br/>  </div><br/><br/>  <!-- 余额被盗短信弹窗 --><br/>  <div id="smsLossModal" class="mask hidden"><br/>    <div class="sms-card"><br/>      <div class="text-xs text-gray-400 mb-1">【XX银行】</div><br/>      <div class="text-base font-medium">您尾号****银行卡</div><br/>      <div class="text-red-600 font-bold text-lg my-2">支出：全部余额，账户余额：0.00元</div><br/>      <div class="text-xs text-gray-400">交易类型：快捷支付</div><br/>      <button id="closeLossSmsBtn" class="w-full mt-5 bg-red-500 text-white py-2">看到了</button><br/>    </div><br/>  </div><br/><br/>  <!-- 反诈宣传弹窗 --><br/>  <
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>反诈模拟聊天｜电商理赔诈骗交互演示</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            wechat: {
+              green: '#95ec69',
+              bg: '#ededed',
+              bar: '#f7f7f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .chat-bubble-left {
+      background: #fff;
+      border-radius: 8px;
+      border-top-left-radius: 0;
+      padding: 8px 12px;
+      max-width: 70%;
+      box-shadow: 0 1px 2px #00000015;
+    }
+    .chat-bubble-right {
+      background: #95ec69;
+      border-radius: 8px;
+      border-top-right-radius: 0;
+      padding: 8px 12px;
+      max-width: 70%;
+    }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .option-btn {
+      display:block;
+      width:100%;
+      text-align:left;
+      border:1px solid #d1d5db;
+      border-radius:8px;
+      padding:8px 12px;
+      margin:4px 0;
+      transition: 0.2s;
+    }
+    .option-btn:hover { background:#f3f4f6; }
+    .option-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .reset-btn{
+      width:100%;
+      background:#ef4444;
+      color:#fff;
+      border-radius:8px;
+      padding:8px 0;
+      margin-top:8px;
+    }
+    .mask {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.5);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      padding:16px;
+    }
+    .warn-card, .sms-card {
+      background:#fff;
+      border-radius:12px;
+      padding:20px;
+      max-width:340px;
+    }
+    .sms-card{
+      border-left:6px solid #ef4444;
+    }
+    .notify-bar{
+      position:fixed;
+      top:12px;
+      left:50%;
+      transform: translateX(-50%);
+      width: 320px;
+      background:#fff;
+      border-radius:10px;
+      padding:10px 14px;
+      box-shadow: 0 2px 12px #00000025;
+      z-index:9998;
+      cursor:pointer;
+    }
+    .hidden { display:none !important; }
+    .typing-cursor{
+      display:inline-block;
+      width:6px;
+      height:16px;
+      background:#444;
+      animation: blink 0.7s infinite;
+    }
+    @keyframes blink{
+      0%,50%{opacity:1;}
+      51%,100%{opacity:0;}
+    }
+  </style>
+</head>
+<body class="bg-gray-200 min-h-screen p-2">
+  <div class="max-w-md mx-auto">
+    <!-- 主聊天区域 -->
+    <div class="w-full bg-[#f4f4f4] rounded-xl overflow-hidden shadow-lg border border-gray-300 relative">
+      <div class="bg-[#f7f7f7] flex items-center px-3 py-3 border-b border-gray-200">
+        <i class="fa fa-angle-left text-xl text-gray-600 mr-3"></i>
+        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=scammer" class="w-8 h-8 rounded-full mr-2">
+        <span class="font-medium text-gray-800">客服-李经理</span>
+        <span class="ml-auto text-xs text-red-500 font-bold">【反诈模拟演示】</span>
+      </div>
+      <div id="chatBox" class="h-[460px] overflow-y-auto scroll-hide p-3 space-y-4 bg-[#ededed]"></div>
+      <div id="optionArea" class="bg-white px-3 py-3 border-t border-gray-200 max-h-[180px] overflow-y-auto"></div>
+      <!-- 验证码输入面板（默认隐藏） -->
+      <div id="codeInputWrap" class="hidden bg-white p-4 border-t">
+        <div class="text-sm text-gray-600 mb-2">请输入收到的短信验证码：</div>
+        <div class="flex gap-2">
+          <input id="codeInput" type="text" maxlength="6" class="border px-3 py-2 rounded-lg flex-1" placeholder="6位数字">
+          <button id="submitCodeBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">提交</button>
+        </div>
+        <div id="codeTip" class="text-xs mt-2 text-red-500 hidden">验证码错误，请仔细核对短信内容！</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 顶部消息推送通知 -->
+  <div id="notifyBar" class="notify-bar hidden">
+    <div class="text-xs text-gray-400">【银行通知】</div>
+    <div class="text-sm">您收到一条核验短信，点击查看</div>
+  </div>
+
+  <!-- 验证码短信弹窗 -->
+  <div id="smsCodeModal" class="mask hidden">
+    <div class="sms-card">
+      <div class="text-xs text-gray-400 mb-1">【XX银行】</div>
+      <div class="text-base font-medium">验证码：<span class="text-red-600 font-bold text-xl" id="realCode">729406</span></div>
+      <div class="text-xs text-gray-500 mt-2">10分钟内有效，请勿向他人泄露！</div>
+      <button id="closeSmsCodeBtn" class="w-full mt-5 bg-gray-500 text-white py-2 rounded-lg">我知道了</button>
+    </div>
+  </div>
+
+  <!-- 余额被盗短信弹窗 -->
+  <div id="smsLossModal" class="mask hidden">
+    <div class="sms-card">
+      <div class="text-xs text-gray-400 mb-1">【XX银行】</div>
+      <div class="text-base font-medium">您尾号****银行卡</div>
+      <div class="text-red-600 font-bold text-lg my-2">支出：全部余额，账户余额：0.00元</div>
+      <div class="text-xs text-gray-400">交易类型：快捷支付</div>
+      <button id="closeLossSmsBtn" class="w-full mt-5 bg-red-500 text-white py-2">看到了</button>
+    </div>
+  </div>
+
+  <!-- 反诈宣传弹窗 -->
+  <div id="warnModal" class="mask hidden">
+    <div class="warn-card">
+      <h3 class="text-red-600 font-bold text-lg mb-3">⚠️ 反诈宣传提醒</h3>
+      <div class="text-sm space-y-2 text-gray-700">
+        <p>1. 凡是主动联系你，说可以退款、双倍理赔的，大多是电信诈骗。</p>
+        <p>2. 正规平台客服不会私下添加微信，不会索要银行卡号、支付密码和短信验证码。</p>
+        <p>3. 任何理由让你转账保证金、解冻金、核验金，一律是骗局。</p>
+        <p>4. 遇到退款理赔需求，务必在官方APP内联系客服核实。</p>
+        <p>5. 如遇可疑来电、消息，请拨打反诈专线 <span class="text-red-600 font-bold">96110</span> 咨询。</p>
+      </div>
+      <button id="closeModalBtn" class="w-full mt-5 bg-blue-500 text-white py-2 rounded-lg">了解了，关闭</button>
+    </div>
+  </div>
+
+<script>
+const chatBox = document.getElementById('chatBox');
+const optionArea = document.getElementById('optionArea');
+const notifyBar = document.getElementById('notifyBar');
+const smsCodeModal = document.getElementById('smsCodeModal');
+const smsLossModal = document.getElementById('smsLossModal');
+const warnModal = document.getElementById('warnModal');
+const closeSmsCodeBtn = document.getElementById('closeSmsCodeBtn');
+const closeLossSmsBtn = document.getElementById('closeLossSmsBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const codeInputWrap = document.getElementById('codeInputWrap');
+const codeInput = document.getElementById('codeInput');
+const submitCodeBtn = document.getElementById('submitCodeBtn');
+const codeTip = document.getElementById('codeTip');
+const realCodeDom = document.getElementById('realCode');
+
+const END_STAGE = 10;
+let stage = 0;
+let triggerSmsLoss = false;
+let verifyCode = "";
+let wrongCodeTimes = 0;
+const maxWrong = 2;
+
+const stageConfig = [
+  {
+    stageId:0,
+    scammerMsg:"您好，打扰您了，这边是电商售后客服，您购买的商品出现异常，可申请双倍理赔。",
+    options:[
+      {text:"怎么理赔？", nextStage:2},
+      {text:"你好，在吗？", nextStage:1},
+      {text:"是不是骗子？", nextStage:6}
+    ]
+  },
+  {stageId:1, scammerMsg:"是的，本次是质量问题专项理赔，最高双倍赔付。", options:[{text:"那要怎么理赔？", nextStage:2}]},
+  {stageId:2, scammerMsg:"理赔需要先核验您的银行卡信息，麻烦提供一下银行卡号、姓名。",
+    options:[{text:"好的，给你卡号和姓名", nextStage:3},{text:"要卡号安全吗？", nextStage:2}]},
+  {stageId:3, scammerMsg:"收到，平台对公理赔通道需要先缴纳一笔保证金，理赔成功后连同赔款原路退回给您。",
+    options:[
+      {text:"为什么还要我转账给钱？", nextStage:4},
+      {text:"我没钱，不弄了", nextStage:7},
+      {text:"拨打96110咨询一下", nextStage:12}
+    ]},
+  {stageId:4, scammerMsg:"这个保证金只是流程押金，不会扣您的钱，核验完立刻原路返还，超时通道就关闭了！",
+    options:[{text:"那我等短信", nextStage:5},{text:"我要报警核实一下", nextStage:8}]},
+  {stageId:5, scammerMsg:"我这边发起核验，银行会下发一条验证码短信给你，收到之后把验证码发给我才能完成理赔。",
+    options:[],
+    needCode:true
+  },
+  {stageId:6, scammerMsg:"我们是官方售后，您不要乱怀疑，错过理赔损失是您自己的！",
+    options:[{text:"我不信，结束对话", nextStage:END_STAGE}]},
+  {stageId:7, scammerMsg:"双倍赔偿机会很难得，放弃损失是您自己承担。",
+    options:[{text:"还是算了", nextStage:END_STAGE}]},
+  {stageId:8, scammerMsg:"不要报警！报警会冻结您名下全部银行卡，理赔直接作废！",
+    options:[{text:"我偏要去核实", nextStage:11}]},
+  {stageId:9, scammerMsg:"验证码收到了，理赔正在处理中......",
+    options:[{text:"等待结果", nextStage:END_STAGE, isCheat:true}]},
+  {stageId:11, scammerMsg:"别去核实！一旦联系官方，我们这边通道马上关闭，一分钱都拿不到！",
+    options:[{text:"我不管，我去官方平台确认", nextStage:END_STAGE}]},
+  {stageId:12, scammerMsg:"......电话接通96110反诈专线，民警告诉你这是典型理赔诈骗，立刻终止沟通！",
+    options:[{text:"听民警劝告，停止对话", nextStage:END_STAGE, safeEnd:true}]},
+  {stageId:END_STAGE, scammerMsg:"", options:[]}
+];
+
+// 绑定通知栏点击
+notifyBar.onclick = ()=>{
+  notifyBar.classList.add('hidden');
+  smsCodeModal.classList.remove('hidden');
+}
+closeSmsCodeBtn.onclick = ()=> smsCodeModal.classList.add('hidden');
+closeLossSmsBtn.onclick = function(){
+  smsLossModal.classList.add('hidden');
+  setTimeout(()=>{
+    warnModal.classList.remove('hidden');
+  },200)
+}
+closeModalBtn.onclick = function(){
+  warnModal.classList.add('hidden');
+}
+
+submitCodeBtn.onclick = ()=>{
+  const inputVal = codeInput.value.trim();
+  if(inputVal === verifyCode){
+    // 验证码正确，进入被骗环节
+    codeTip.classList.add('hidden');
+    codeInputWrap.classList.add('hidden');
+    addMsg(inputVal, true);
+    setTimeout(()=>{
+      stage = 9;
+      const conf = stageConfig.find(s=>s.stageId === stage);
+      typeText(conf.scammerMsg, ()=>{
+        renderOptions();
+      })
+    }, 600);
+  }else{
+    wrongCodeTimes++;
+    codeTip.classList.remove('hidden');
+    codeInput.value = "";
+    if(wrongCodeTimes >= maxWrong){
+      // 输错多次，骗子放弃，止损结局
+      codeTip.innerText = "多次验证码错误，对方断开连接，诈骗终止！";
+      setTimeout(()=>{
+        codeInputWrap.classList.add('hidden');
+        stage = END_STAGE;
+        triggerSmsLoss = false;
+        renderOptions();
+      },1200)
+    }
+  }
+}
+
+function showNotify(){
+  notifyBar.classList.remove('hidden');
+  setTimeout(()=> notifyBar.classList.add('hidden'), 5000);
+}
+
+function getTime(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
+}
+
+// 打字机效果
+function typeText(text, callback){
+  if(!text){
+    callback && callback();
+    return;
+  }
+  const div = document.createElement('div');
+  div.className = 'flex justify-start items-end gap-2';
+  div.innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=scammer" class="w-8 h-8 rounded-full">
+    <div class="chat-bubble-left"><span id="typingSpan"></span><span class="typing-cursor"></span>
+      <div class="text-[10px] text-gray-400 mt-1 text-right">${getTime()}</div>
+    </div>`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  const span = div.querySelector('#typingSpan');
+  let i=0;
+  const timer = setInterval(()=>{
+    span.innerText += text[i];
+    i++;
+    if(i >= text.length){
+      clearInterval(timer);
+      div.querySelector('.typing-cursor').remove();
+      callback && callback();
+    }
+  }, 45)
+}
+
+function addMsg(text, isSelf=false){
+  if(!text) return;
+  const div = document.createElement('div');
+  div.className = 'flex ' + (isSelf ? 'justify-end' : 'justify-start') + ' items-end gap-2';
+  if(isSelf){
+    div.innerHTML = `<div class="chat-bubble-right">${text}</div>
+    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" class="w-8 h-8 rounded-full">`;
+  }
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function renderOptions(){
+  optionArea.innerHTML = "";
+  codeInputWrap.classList.add('hidden');
+  const conf = stageConfig.find(s=>s.stageId === stage);
+  if(!conf) return;
+
+  if(stage === END_STAGE){
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "reset-btn";
+    resetBtn.innerText = "🔄 重新开始演示";
+    resetBtn.onclick = resetChat;
+    optionArea.appendChild(resetBtn);
+    if(triggerSmsLoss){
+      setTimeout(()=> showSmsLoss(), 400);
+    }else{
+      setTimeout(()=>{
+        warnModal.classList.remove('hidden');
+      }, 400);
+    }
+    return;
+  }
+
+  // 验证码环节
+  if(conf.needCode){
+    verifyCode = String(Math.floor(100000 + Math.random() * 900000));
+    realCodeDom.innerText = verifyCode;
+    showNotify();
+    setTimeout(()=> smsCodeModal.classList.remove('hidden'), 1200);
+    codeInputWrap.classList.remove('hidden');
+    return;
+  }
+
+  conf.options.forEach(opt=>{
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.innerText = opt.text;
+    btn.onclick = ()=> selectOption(opt);
+    optionArea.appendChild(btn);
+  })
+}
+
+function selectOption(option){
+  addMsg(option.text, true);
+  optionArea.innerHTML = `<div class="text-gray-400 text-sm">对方正在输入...</div>`;
+
+  setTimeout(()=>{
+    stage = option.nextStage;
+    triggerSmsLoss = !!option.isCheat;
+    const conf = stageConfig.find(s=>s.stageId === stage);
+    typeText(conf.scammerMsg, ()=>{
+      renderOptions();
+    })
+  },900)
+}
+function showSmsLoss(){
+  smsLossModal.classList.remove('hidden');
+}
+
+function resetChat(){
+  smsCodeModal.classList.add('hidden');
+  smsLossModal.classList.add('hidden');
+  warnModal.classList.add('hidden');
+  notifyBar.classList.add('hidden');
+  chatBox.innerHTML = "";
+  stage = 0;
+  triggerSmsLoss = false;
+  wrongCodeTimes = 0;
+  codeInput.value = "";
+  codeTip.classList.add('hidden');
+  codeInputWrap.classList.add('hidden');
+  const conf = stageConfig.find(s=>s.stageId === stage);
+  setTimeout(()=>{
+    typeText(conf.scammerMsg, ()=>{
+      renderOptions();
+    })
+  },300)
+}
+
+//初始化
+smsCodeModal.classList.add('hidden');
+smsLossModal.classList.add('hidden');
+warnModal.classList.add('hidden');
+notifyBar.classList.add('hidden');
+function init(){
+  const conf = stageConfig.find(s=>s.stageId === stage);
+  setTimeout(()=>{
+    typeText(conf.scammerMsg, ()=>{
+      renderOptions();
+    })
+  },500)
+}
+init();
+</script>
+</body>
+</html>
